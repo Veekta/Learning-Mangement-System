@@ -57,6 +57,18 @@ const getAllUser = asyncHandler(async (req, res) => {
   }
 });
 
+/* Get a user */
+const getAuser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
+  try {
+    const getProfile = await User.findById(id);
+    res.status(200).json({ status: true, message: "User found", getProfile });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
 //update a user
 
 const updateUser = asyncHandler(async (req, res) => {
@@ -74,4 +86,65 @@ const updateUser = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { registerUser, loginUser, getAllUser, updateUser };
+/* delete a user */
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
+  try {
+    await User.findByIdAndDelete(id);
+    res
+      .status(200)
+      .json({ status: true, message: "user deleted successfully" });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+/* Block a User */
+const blockUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
+  try {
+    const block = await User.findByIdAndUpdate(
+      id,
+      { isblocked: true },
+      { new: true }
+    );
+    res.status(200).json({
+      status: true,
+      message: "User blocked successfully",
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+/* Block a User */
+const unBlockUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  validateMongoDbId(id);
+  try {
+    const block = await User.findByIdAndUpdate(
+      id,
+      { isblocked: false },
+      { new: true }
+    );
+    res.status(200).json({
+      status: true,
+      message: "User unblocked successfully",
+    });
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+module.exports = {
+  registerUser,
+  loginUser,
+  getAllUser,
+  getAuser,
+  updateUser,
+  deleteUser,
+  blockUser,
+  unBlockUser,
+};
