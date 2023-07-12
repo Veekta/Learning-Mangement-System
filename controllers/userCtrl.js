@@ -2,6 +2,7 @@ const { generateToken } = require("../config/jwtToken");
 const User = require("../models/userModel");
 const asyncHandler = require("express-async-handler");
 const validateMongoDbId = require("../config/validateMongDbId");
+const crypto = require("crypto");
 
 // create a user
 const registerUser = asyncHandler(async (req, res) => {
@@ -138,6 +139,59 @@ const unBlockUser = asyncHandler(async (req, res) => {
   }
 });
 
+const updatePassword = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { password } = req.body;
+  validateMongoDbId(_id);
+  try {
+    const user = await User.findById(_id);
+    if (user && (await user.isPasswordMatched(password))) {
+      throw new Error("Please provide a new password instead of old one!");
+    } else {
+      user.password = password;
+      await user.save();
+      res
+        .status(200)
+        .json({ status: true, message: "Password updated successfully" });
+    }
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+/* forgot password token */
+const forgotPasswordToken = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email: email });
+  if (!user) throw new Error("No User with this email!");
+  try {
+    const token = await user.createPasswordResetToken();
+    await user.save();
+    const resetlink = `http://localhost:5000/api/user/reset-password/${token}`;
+    res.status(200).json(resetlink);
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const { token } = req.params;
+  const hashToken = crypto.createHash("sha256").update(token).digest("hex");
+  const user = await User.findOne({
+    passwordResetToken: hashToken,
+    passwordResetExpires: { $gt: Date.now() },
+  });
+  if (!user) throw new Error("Token expired, please try again!");
+  user.password = password;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+  res
+    .status(200)
+    .json({ status: true, mesage: "password reset successfully!" });
+});
+
 module.exports = {
   registerUser,
   loginUser,
@@ -147,4 +201,7 @@ module.exports = {
   deleteUser,
   blockUser,
   unBlockUser,
+  updatePassword,
+  forgotPasswordToken,
+  resetPassword,
 };
